@@ -1,5 +1,3 @@
-import os
-import asyncio
 import sounddevice as sd
 import numpy as np
 import wave
@@ -8,7 +6,8 @@ from deepgram import Deepgram
 from groq import Groq
 from dotenv import load_dotenv
 from gtts import gTTS
-import streamlit.components.v1 as components
+import asyncio
+import os
 
 # Load API keys from .env file
 load_dotenv()
@@ -35,16 +34,22 @@ async def recognize_audio_deepgram(filename):
         return response['results']['channels'][0]['alternatives'][0]['transcript']
 
 def record_audio(filename, duration, samplerate):
-    st.write("Recording🔉...")
-    audio_data = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype=np.int16)
-    sd.wait()  # Wait until recording is finished
-    wavefile = wave.open(filename, 'wb')
-    wavefile.setnchannels(1)
-    wavefile.setsampwidth(2)
-    wavefile.setframerate(samplerate)
-    wavefile.writeframes(audio_data.tobytes())
-    wavefile.close()
-    st.write("Recording finished🔴.")
+    try:
+        st.write("Recording🔉...")
+        device_info = sd.query_devices(kind='input')
+        default_samplerate = int(device_info['default_samplerate'])
+
+        audio_data = sd.rec(int(duration * default_samplerate), samplerate=default_samplerate, channels=1, dtype=np.int16)
+        sd.wait()  # Wait until recording is finished
+        wavefile = wave.open(filename, 'wb')
+        wavefile.setnchannels(1)
+        wavefile.setsampwidth(2)
+        wavefile.setframerate(default_samplerate)
+        wavefile.writeframes(audio_data.tobytes())
+        wavefile.close()
+        st.write("Recording finished🔴.")
+    except Exception as e:
+        st.write(f"Error recording audio: {e}")
 
 def generate_response(prompt):
     response = groq_client.chat.completions.create(
