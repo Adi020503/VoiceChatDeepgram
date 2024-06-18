@@ -1,5 +1,5 @@
 # Use an official Python runtime as a parent image
-FROM python:3.10
+FROM python:3.11-slim
 
 # Set the working directory
 WORKDIR /app
@@ -19,13 +19,8 @@ RUN apt-get update && apt-get install -y \
 # Copy the current directory contents into the container at /app
 COPY . /app
 
-# Download and install the correct PyAudio .whl file
-RUN wget https://download.lfd.uci.edu/pythonlibs/p5fg5vbh/PyAudio-0.2.11-cp310-cp310-win_amd64.whl \
-    && pip install PyAudio-0.2.11-cp310-cp310-win_amd64.whl \
-    && rm PyAudio-0.2.11-cp310-cp310-win_amd64.whl
-
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Command to run the Streamlit app
-CMD ["streamlit", "run", "streamlit_app.py", "--server.port=8000", "--server.address=0.0.0.0"]
+CMD ["streamlit", "run", "app.py", "--server.port=8000", "--server.address=0.0.0.0"]
