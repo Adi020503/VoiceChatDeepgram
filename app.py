@@ -3,12 +3,12 @@ import asyncio
 import sounddevice as sd
 import numpy as np
 import wave
-import pygame
 import streamlit as st
 from deepgram import Deepgram
 from groq import Groq
 from dotenv import load_dotenv
 from gtts import gTTS
+import streamlit.components.v1 as components
 
 # Load API keys from .env file
 load_dotenv()
@@ -23,7 +23,7 @@ dg_client = Deepgram(DEEPGRAM_API_KEY)
 groq_client = Groq(api_key=GROQ_API_KEY)
 
 # Audio recording parameters
-DURATION = 3  # seconds
+DURATION = 5 # seconds
 SAMPLERATE = 16000
 FILENAME = "output.wav"
 RESPONSE_AUDIO = "response.mp3"
@@ -54,7 +54,7 @@ def generate_response(prompt):
             {"role": "user", "content": prompt}
         ],
         temperature=0.29,
-        max_tokens=80,
+        max_tokens=100,
         top_p=1,
         stream=False,
         stop=None,
@@ -64,13 +64,9 @@ def generate_response(prompt):
 def play_response(text):
     tts = gTTS(text=text, lang='en')
     tts.save(RESPONSE_AUDIO)
-    pygame.mixer.init()
-    pygame.mixer.music.load(RESPONSE_AUDIO)
-    pygame.mixer.music.play()
-    while pygame.mixer.music.get_busy():
-        pygame.time.Clock().tick(10)
-    pygame.mixer.quit()
-    os.remove(RESPONSE_AUDIO)  # Clean up the response audio file
+    audio_file = open(RESPONSE_AUDIO, 'rb')
+    audio_bytes = audio_file.read()
+    st.audio(audio_bytes, format='audio/mp3')
 
 async def main():
     stop_keywords = {"thank you", "goodbye", "exit"}
