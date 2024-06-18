@@ -1,0 +1,8 @@
+deepgram
+gtts
+groq
+numpy
+pygame
+python-dotenv
+sounddevice
+streamlit
