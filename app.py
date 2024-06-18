@@ -36,13 +36,8 @@ async def recognize_audio_deepgram(filename):
 
 def record_audio(filename, duration, samplerate):
     st.write("Recording🔉...")
-    try:
-        audio_data = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype=np.int16)
-        sd.wait()  # Wait until recording is finished
-    except sd.PortAudioError as e:
-        st.write(f"Error recording audio: {e}")
-        return
-
+    audio_data = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype=np.int16)
+    sd.wait()  # Wait until recording is finished
     wavefile = wave.open(filename, 'wb')
     wavefile.setnchannels(1)
     wavefile.setsampwidth(2)
@@ -82,10 +77,6 @@ async def main():
 
     while True:
         record_audio(FILENAME, DURATION, SAMPLERATE)
-        if not os.path.exists(FILENAME):
-            st.write("Audio recording failed. Please try again.")
-            break
-
         user_input = await recognize_audio_deepgram(FILENAME)
         st.write(f"User: {user_input}")
 
