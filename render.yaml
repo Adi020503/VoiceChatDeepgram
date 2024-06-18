@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: your-service-name
+    env: python
+    buildCommand: |
+      apt-get update &&
+      apt-get install -y python3-dev libsdl-image1.2-dev libsdl-mixer1.2-dev libsdl-ttf2.0-dev libsdl1.2-dev libsmpeg-dev libportmidi-dev libavformat-dev libswscale-dev &&
+      pip install -r requirements.txt
+    startCommand: gunicorn app:app  # Replace with your start command
