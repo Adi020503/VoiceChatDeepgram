@@ -1,3 +1,5 @@
+import os
+import asyncio
 import sounddevice as sd
 import numpy as np
 import wave
@@ -6,8 +8,6 @@ from deepgram import Deepgram
 from groq import Groq
 from dotenv import load_dotenv
 from gtts import gTTS
-import asyncio
-import os
 
 # Load API keys from .env file
 load_dotenv()
@@ -22,7 +22,7 @@ dg_client = Deepgram(DEEPGRAM_API_KEY)
 groq_client = Groq(api_key=GROQ_API_KEY)
 
 # Audio recording parameters
-DURATION = 5 # seconds
+DURATION = 5  # seconds
 SAMPLERATE = 16000
 FILENAME = "output.wav"
 RESPONSE_AUDIO = "response.mp3"
@@ -50,6 +50,8 @@ def record_audio(filename, duration, samplerate):
         st.write("Recording finished🔴.")
     except Exception as e:
         st.write(f"Error recording audio: {e}")
+        return False
+    return True
 
 def generate_response(prompt):
     response = groq_client.chat.completions.create(
@@ -73,30 +75,36 @@ def play_response(text):
     audio_bytes = audio_file.read()
     st.audio(audio_bytes, format='audio/mp3')
 
-async def main():
+async def main(audio_file):
     stop_keywords = {"thank you", "goodbye", "exit"}
 
-    while True:
-        record_audio(FILENAME, DURATION, SAMPLERATE)
-        user_input = await recognize_audio_deepgram(FILENAME)
-        st.write(f"User: {user_input}")
+    user_input = await recognize_audio_deepgram(audio_file)
+    st.write(f"User: {user_input}")
 
-        if any(keyword in user_input.lower() for keyword in stop_keywords):
-            st.write("Conversation ended.")
-            play_response("Goodbye! Have a great day!")
-            break
+    if any(keyword in user_input.lower() for keyword in stop_keywords):
+        st.write("Conversation ended.")
+        play_response("Goodbye! Have a great day!")
+        return
 
-        response = generate_response(user_input)
-        st.write(f"Bot: {response}")
-        play_response(response)
-        os.remove(FILENAME)  # Clean up the audio file
+    response = generate_response(user_input)
+    st.write(f"Bot: {response}")
+    play_response(response)
+    os.remove(audio_file)  # Clean up the audio file
 
 # Streamlit UI
 def run_streamlit_app():
     st.title("Voice Chatbot🔊")
 
-    if st.button("Start Conversation"):
-        asyncio.run(main())
+    if st.button("Record Audio"):
+        success = record_audio(FILENAME, DURATION, SAMPLERATE)
+        if success:
+            asyncio.run(main(FILENAME))
+
+    uploaded_file = st.file_uploader("Or upload an audio file", type=["wav"])
+    if uploaded_file is not None:
+        with open(FILENAME, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        asyncio.run(main(FILENAME))
 
 if __name__ == "__main__":
     run_streamlit_app()
