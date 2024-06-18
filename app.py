@@ -1,13 +1,13 @@
 import os
 import asyncio
-import sounddevice as sd
-import numpy as np
-import wave
+from gtts import gTTS
 import streamlit as st
+from streamlit_webrtc import webrtc_streamer, AudioProcessorBase, WebRtcMode
 from deepgram import Deepgram
 from groq import Groq
 from dotenv import load_dotenv
-from gtts import gTTS
+import numpy as np
+import wave
 
 # Load API keys from .env file
 load_dotenv()
@@ -21,37 +21,37 @@ if not DEEPGRAM_API_KEY or not GROQ_API_KEY:
 dg_client = Deepgram(DEEPGRAM_API_KEY)
 groq_client = Groq(api_key=GROQ_API_KEY)
 
-# Audio recording parameters
-DURATION = 5  # seconds
-SAMPLERATE = 16000
-FILENAME = "output.wav"
 RESPONSE_AUDIO = "response.mp3"
+
+class AudioProcessor(AudioProcessorBase):
+    def __init__(self):
+        self.recording = np.array([], dtype=np.int16)
+
+    def recv(self, frame):
+        audio_frame = frame.to_ndarray()
+        self.recording = np.concatenate((self.recording, audio_frame))
+        return frame
+
+    async def process_and_generate_response(self):
+        # Save recording to a temporary WAV file
+        filename = "temp_audio.wav"
+        with wave.open(filename, 'wb') as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(16000)
+            wf.writeframes(self.recording.tobytes())
+
+        transcript = await recognize_audio_deepgram(filename)
+        response = generate_response(transcript)
+        play_response(response)
+
+        os.remove(filename)  # Clean up the audio file
 
 async def recognize_audio_deepgram(filename):
     with open(filename, 'rb') as audio:
         source = {'buffer': audio.read(), 'mimetype': 'audio/wav'}
         response = await dg_client.transcription.prerecorded(source, {'punctuate': True, 'language': 'en-US'})
         return response['results']['channels'][0]['alternatives'][0]['transcript']
-
-def record_audio(filename, duration, samplerate):
-    try:
-        st.write("Recording🔉...")
-        device_info = sd.query_devices(kind='input')
-        default_samplerate = int(device_info['default_samplerate'])
-
-        audio_data = sd.rec(int(duration * default_samplerate), samplerate=default_samplerate, channels=1, dtype=np.int16)
-        sd.wait()  # Wait until recording is finished
-        wavefile = wave.open(filename, 'wb')
-        wavefile.setnchannels(1)
-        wavefile.setsampwidth(2)
-        wavefile.setframerate(default_samplerate)
-        wavefile.writeframes(audio_data.tobytes())
-        wavefile.close()
-        st.write("Recording finished🔴.")
-    except Exception as e:
-        st.write(f"Error recording audio: {e}")
-        return False
-    return True
 
 def generate_response(prompt):
     response = groq_client.chat.completions.create(
@@ -74,37 +74,17 @@ def play_response(text):
     audio_file = open(RESPONSE_AUDIO, 'rb')
     audio_bytes = audio_file.read()
     st.audio(audio_bytes, format='audio/mp3')
-
-async def main(audio_file):
-    stop_keywords = {"thank you", "goodbye", "exit"}
-
-    user_input = await recognize_audio_deepgram(audio_file)
-    st.write(f"User: {user_input}")
-
-    if any(keyword in user_input.lower() for keyword in stop_keywords):
-        st.write("Conversation ended.")
-        play_response("Goodbye! Have a great day!")
-        return
-
-    response = generate_response(user_input)
-    st.write(f"Bot: {response}")
-    play_response(response)
-    os.remove(audio_file)  # Clean up the audio file
+    os.remove(RESPONSE_AUDIO)  # Clean up the response audio file
 
 # Streamlit UI
 def run_streamlit_app():
     st.title("Voice Chatbot🔊")
 
-    if st.button("Record Audio"):
-        success = record_audio(FILENAME, DURATION, SAMPLERATE)
-        if success:
-            asyncio.run(main(FILENAME))
+    audio_processor = AudioProcessor()
+    webrtc_ctx = webrtc_streamer(key="example", mode=WebRtcMode.SENDRECV, audio_processor_factory=lambda: audio_processor, media_stream_constraints={"audio": True})
 
-    uploaded_file = st.file_uploader("Or upload an audio file", type=["wav"])
-    if uploaded_file is not None:
-        with open(FILENAME, "wb") as f:
-            f.write(uploaded_file.getbuffer())
-        asyncio.run(main(FILENAME))
+    if st.button("Process and Get Response"):
+        asyncio.run(audio_processor.process_and_generate_response())
 
 if __name__ == "__main__":
     run_streamlit_app()
