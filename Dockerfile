@@ -1,27 +1,29 @@
-# Use an official Python runtime as a parent image
-FROM python:3.11-slim
+# Use the official Python image as a base image
+FROM python:3.10-slim
 
-# Set the working directory
+# Set the working directory in the container
 WORKDIR /app
-
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
+    libasound-dev \
     portaudio19-dev \
+    libportaudio2 \
+    libportaudiocpp0 \
     ffmpeg \
-    libsm6 \
-    libxext6 \
-    cmake \
-    rsync \
-    libgl1-mesa-glx \
-    wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the current directory contents into the container at /app
-COPY . /app
+# Copy the requirements.txt file into the container at /app
+COPY requirements.txt requirements.txt
 
-# Install Python dependencies
+# Install the dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Command to run the Streamlit app
-CMD ["streamlit", "run", "app.py", "--server.port=8000", "--server.address=0.0.0.0"]
+# Copy the rest of the application code into the container at /app
+COPY . .
+
+# Expose port 8501 for Streamlit
+EXPOSE 8501
+
+# Run the application
+CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
