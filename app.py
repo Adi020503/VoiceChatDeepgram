@@ -1,13 +1,10 @@
 import os
 import asyncio
-from gtts import gTTS
 import streamlit as st
-from streamlit_webrtc import webrtc_streamer, AudioProcessorBase, WebRtcMode
 from deepgram import Deepgram
 from groq import Groq
 from dotenv import load_dotenv
-import numpy as np
-import wave
+from gtts import gTTS
 
 # Load API keys from .env file
 load_dotenv()
@@ -23,35 +20,11 @@ groq_client = Groq(api_key=GROQ_API_KEY)
 
 RESPONSE_AUDIO = "response.mp3"
 
-class AudioProcessor(AudioProcessorBase):
-    def __init__(self):
-        self.recording = np.array([], dtype=np.int16)
-
-    def recv(self, frame):
-        audio_frame = frame.to_ndarray()
-        self.recording = np.concatenate((self.recording, audio_frame))
-        return frame
-
-    async def process_and_generate_response(self):
-        # Save recording to a temporary WAV file
-        filename = "temp_audio.wav"
-        with wave.open(filename, 'wb') as wf:
-            wf.setnchannels(1)
-            wf.setsampwidth(2)
-            wf.setframerate(16000)
-            wf.writeframes(self.recording.tobytes())
-
-        transcript = await recognize_audio_deepgram(filename)
-        response = generate_response(transcript)
-        play_response(response)
-
-        os.remove(filename)  # Clean up the audio file
-
-async def recognize_audio_deepgram(filename):
-    with open(filename, 'rb') as audio:
-        source = {'buffer': audio.read(), 'mimetype': 'audio/wav'}
-        response = await dg_client.transcription.prerecorded(source, {'punctuate': True, 'language': 'en-US'})
-        return response['results']['channels'][0]['alternatives'][0]['transcript']
+async def recognize_audio_deepgram(audio_data):
+    response = await dg_client.transcription.prerecorded(
+        {'buffer': audio_data, 'mimetype': 'audio/wav'}, {'punctuate': True, 'language': 'en-US'}
+    )
+    return response['results']['channels'][0]['alternatives'][0]['transcript']
 
 def generate_response(prompt):
     response = groq_client.chat.completions.create(
@@ -61,7 +34,7 @@ def generate_response(prompt):
             {"role": "user", "content": prompt}
         ],
         temperature=0.29,
-        max_tokens=100,
+        max_tokens=80,
         top_p=1,
         stream=False,
         stop=None,
@@ -76,15 +49,77 @@ def play_response(text):
     st.audio(audio_bytes, format='audio/mp3')
     os.remove(RESPONSE_AUDIO)  # Clean up the response audio file
 
+async def main(audio_data):
+    transcript = await recognize_audio_deepgram(audio_data)
+    st.write(f"User: {transcript}")
+
+    response = generate_response(transcript)
+    st.write(f"Bot: {response}")
+    play_response(response)
+
 # Streamlit UI
 def run_streamlit_app():
     st.title("Voice Chatbot🔊")
 
-    audio_processor = AudioProcessor()
-    webrtc_ctx = webrtc_streamer(key="example", mode=WebRtcMode.SENDRECV, audio_processor_factory=lambda: audio_processor, media_stream_constraints={"audio": True})
+    st.write("Click the button below and allow access to your microphone to start recording.")
 
-    if st.button("Process and Get Response"):
-        asyncio.run(audio_processor.process_and_generate_response())
+    audio_recorder_html = """
+    <script>
+    const recordButton = document.getElementById("recordButton");
+    const stopButton = document.getElementById("stopButton");
+    const audioElement = document.getElementById("audioElement");
+
+    let mediaRecorder;
+    let audioChunks = [];
+
+    recordButton.addEventListener("click", async () => {
+        audioChunks = [];
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.start();
+
+        mediaRecorder.addEventListener("dataavailable", event => {
+            audioChunks.push(event.data);
+        });
+
+        mediaRecorder.addEventListener("stop", async () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+            const arrayBuffer = await audioBlob.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+
+            const response = await fetch("/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    audio_data: Array.from(uint8Array)
+                })
+            });
+
+            const result = await response.json();
+            const audioResponseBlob = new Blob([new Uint8Array(result.audio)], { type: 'audio/mp3' });
+            const audioUrl = URL.createObjectURL(audioResponseBlob);
+            audioElement.src = audioUrl;
+            audioElement.play();
+        });
+
+        recordButton.style.display = "none";
+        stopButton.style.display = "block";
+    });
+
+    stopButton.addEventListener("click", () => {
+        mediaRecorder.stop();
+        stopButton.style.display = "none";
+        recordButton.style.display = "block";
+    });
+    </script>
+    <button id="recordButton">Start Recording</button>
+    <button id="stopButton" style="display:none;">Stop Recording</button>
+    <audio id="audioElement" controls></audio>
+    """
+
+    st.markdown(audio_recorder_html, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     run_streamlit_app()
