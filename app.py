@@ -8,7 +8,9 @@ import streamlit as st
 from deepgram import Deepgram
 from groq import Groq
 from dotenv import load_dotenv
-import pyttsx3
+from gtts import gTTS
+import tempfile
+import playsound 
 
 # Load API keys from .env file
 load_dotenv()
@@ -69,13 +71,11 @@ def generate_response(prompt):
     return response.choices[0].message.content.strip()
 
 def play_response(text):
-    engine = pyttsx3.init()
-    try:
-        engine.say(text)
-        engine.runAndWait()
-    except Exception as e:
-        st.error(f"Error in text-to-speech: {e}")
-        st.write(f"Bot: {text}")
+    tts = gTTS(text)
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as fp:
+        tts.save(fp.name)
+        playsound.playsound(fp.name)
+        os.remove(fp.name)
 
 async def main():
     stop_keywords = {"thank you", "goodbye", "exit"}
