@@ -1,6 +1,7 @@
 import io
 import os
 import asyncio
+import sounddevice as sd
 import numpy as np
 import wave
 import streamlit as st
@@ -8,7 +9,6 @@ from deepgram import Deepgram
 from groq import Groq
 from dotenv import load_dotenv
 import pyttsx3
-import sounddevice as sd
 
 # Load API keys from .env file
 load_dotenv()
@@ -39,32 +39,12 @@ async def recognize_audio_deepgram(audio_data):
         response = await dg_client.transcription.prerecorded(source, {'punctuate': True, 'language': 'en-US'})
         return response['results']['channels'][0]['alternatives'][0]['transcript']
 
-def record_audio(duration, samplerate):
+def record_audio(duration, samplerate, device=None):
     st.write("Recording🔉...")
-
-    try:
-        # List available devices and select the default one
-        devices = sd.query_devices()
-        input_devices = [i for i, dev in enumerate(devices) if dev['max_input_channels'] > 0]
-        if not input_devices:
-            raise ValueError("No input devices available.")
-
-        default_device = devices[input_devices[0]]['name']
-        st.write(f"Using default device: {default_device}")
-        
-        sd.default.device = input_devices[0]
-
-        audio_data = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype=np.int16)
-        sd.wait()  # Wait until recording is finished
-        st.write("Recording finished🔴.")
-        return audio_data
-
-    except Exception as e:
-        st.warning(f"Warning: {e}")
-        st.warning("No input devices available. Simulating audio input.")
-        # Simulate audio data (silent audio)
-        audio_data = np.zeros(int(duration * samplerate), dtype=np.int16)
-        return audio_data
+    audio_data = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype=np.int16, device=device)
+    sd.wait()  # Wait until recording is finished
+    st.write("Recording finished🔴.")
+    return audio_data
 
 def generate_response(prompt):
     response = groq_client.chat.completions.create(
