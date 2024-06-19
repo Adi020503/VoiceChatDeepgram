@@ -19,7 +19,7 @@ if not DEEPGRAM_API_KEY or not GROQ_API_KEY:
     raise ValueError("API keys for Deepgram and Groq must be set in the .env file")
 
 # Initialize Deepgram and Groq clients
-dg_client = Deepgram(DEEPGRAM_API_KEY)
+dg_client = Deepgram(DEEPGRAM_API_KEY, version="3.3.1")
 groq_client = Groq(api_key=GROQ_API_KEY)
 
 # Audio recording parameters
