@@ -42,16 +42,12 @@ async def recognize_audio_deepgram(audio_data):
 def record_audio(duration, samplerate):
     st.write("Recording🔉...")
 
-    # Check for input devices
+    # List available devices and select the default one
     devices = sd.query_devices()
     input_devices = [i for i, dev in enumerate(devices) if dev['max_input_channels'] > 0]
     if not input_devices:
-        st.warning("No input devices available. Using a pre-recorded audio sample.")
-        # Simulate audio data (for testing purposes)
-        audio_file_path = "sample.wav"  # Path to a pre-recorded audio file
-        with wave.open(audio_file_path, 'rb') as f:
-            audio_data = np.frombuffer(f.readframes(f.getnframes()), dtype=np.int16)
-        return audio_data
+        st.warning("No input devices available. Please use an environment with an audio input device.")
+        return None
 
     default_device = devices[input_devices[0]]['name']
     st.write(f"Using default device: {default_device}")
@@ -88,6 +84,10 @@ async def main():
 
     while True:
         audio_data = record_audio(DURATION, SAMPLERATE)
+        if audio_data is None:
+            st.stop()  # Stop execution if no audio data is recorded
+            break
+
         user_input = await recognize_audio_deepgram(audio_data)
         st.write(f"User: {user_input}")
 
