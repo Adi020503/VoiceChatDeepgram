@@ -5,7 +5,7 @@ import numpy as np
 import wave
 import pygame
 import streamlit as st
-from deepgram import Deepgram
+from deepgram.client import DeepgramClient
 from groq import Groq
 from dotenv import load_dotenv
 from gtts import gTTS
@@ -19,7 +19,7 @@ if not DEEPGRAM_API_KEY or not GROQ_API_KEY:
     raise ValueError("API keys for Deepgram and Groq must be set in the .env file")
 
 # Initialize Deepgram and Groq clients
-dg_client = Deepgram(DEEPGRAM_API_KEY, version="3.3.1")
+dg_client = DeepgramClient(api_key=DEEPGRAM_API_KEY)
 groq_client = Groq(api_key=GROQ_API_KEY)
 
 # Audio recording parameters
@@ -33,6 +33,8 @@ async def recognize_audio_deepgram(filename):
         source = {'buffer': audio.read(), 'mimetype': 'audio/wav'}
         response = await dg_client.transcription.prerecorded(source, {'punctuate': True, 'language': 'en-US'})
         return response['results']['channels'][0]['alternatives'][0]['transcript']
+
+
 
 def record_audio(filename, duration, samplerate):
     st.write("Recording🔉...")
