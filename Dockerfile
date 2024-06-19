@@ -14,7 +14,6 @@ RUN apt-get update && apt-get install -y \
     rsync \
     libgl1-mesa-glx \
     wget \
-    libasound2-dev \
     espeak \
     && rm -rf /var/lib/apt/lists/*
 
