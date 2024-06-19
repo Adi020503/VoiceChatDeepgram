@@ -39,18 +39,28 @@ async def recognize_audio_deepgram(audio_data):
         response = await dg_client.transcription.prerecorded(source, {'punctuate': True, 'language': 'en-US'})
         return response['results']['channels'][0]['alternatives'][0]['transcript']
 
-def record_audio(duration, samplerate):
+
+
+def record_audio(duration, samplerate, input_device_index):
     st.write("Recording🔉...")
-    
-    # Find the default input device and use its index for recording
-    default_input_device = sd.default.device[0]
-    
-    audio_data = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype=np.int16, device=default_input_device)
-    
+    audio_data = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype=np.int16, device=input_device_index)
     sd.wait()  # Wait until recording is finished
     st.write("Recording finished🔴.")
-    
     return audio_data
+
+def main():
+    st.title("Audio Recorder")
+
+    # Print available audio devices and their indices
+    print(sd.query_devices())
+
+    # Choose the input device index based on the output of sd.query_devices()
+    input_device_index = 2
+    audio_data = record_audio(DURATION, SAMPLERATE, input_device_index)
+    
+    # Display the recorded audio data
+    st.audio(audio_data, format='audio/wav')
+
 
 def generate_response(prompt):
     response = groq_client.chat.completions.create(
