@@ -70,8 +70,11 @@ def generate_response(prompt):
 
 def play_response(text):
     engine = pyttsx3.init()
-    engine.say(text)
-    engine.runAndWait()
+    try:
+        engine.say(text)
+        engine.runAndWait()
+    except Exception as e:
+        st.error(f"Error in text-to-speech: {e}")
 
 async def main():
     stop_keywords = {"thank you", "goodbye", "exit"}
