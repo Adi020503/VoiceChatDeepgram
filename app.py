@@ -42,22 +42,29 @@ async def recognize_audio_deepgram(audio_data):
 def record_audio(duration, samplerate):
     st.write("Recording🔉...")
 
-    # List available devices and select the default one
-    devices = sd.query_devices()
-    input_devices = [i for i, dev in enumerate(devices) if dev['max_input_channels'] > 0]
-    if not input_devices:
-        st.warning("No input devices available. Please use an environment with an audio input device.")
-        return None
+    try:
+        # List available devices and select the default one
+        devices = sd.query_devices()
+        input_devices = [i for i, dev in enumerate(devices) if dev['max_input_channels'] > 0]
+        if not input_devices:
+            raise ValueError("No input devices available.")
 
-    default_device = devices[input_devices[0]]['name']
-    st.write(f"Using default device: {default_device}")
-    
-    sd.default.device = input_devices[0]
+        default_device = devices[input_devices[0]]['name']
+        st.write(f"Using default device: {default_device}")
+        
+        sd.default.device = input_devices[0]
 
-    audio_data = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype=np.int16)
-    sd.wait()  # Wait until recording is finished
-    st.write("Recording finished🔴.")
-    return audio_data
+        audio_data = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype=np.int16)
+        sd.wait()  # Wait until recording is finished
+        st.write("Recording finished🔴.")
+        return audio_data
+
+    except Exception as e:
+        st.warning(f"Warning: {e}")
+        st.warning("No input devices available. Simulating audio input.")
+        # Simulate audio data (silent audio)
+        audio_data = np.zeros(int(duration * samplerate), dtype=np.int16)
+        return audio_data
 
 def generate_response(prompt):
     response = groq_client.chat.completions.create(
@@ -84,10 +91,6 @@ async def main():
 
     while True:
         audio_data = record_audio(DURATION, SAMPLERATE)
-        if audio_data is None:
-            st.stop()  # Stop execution if no audio data is recorded
-            break
-
         user_input = await recognize_audio_deepgram(audio_data)
         st.write(f"User: {user_input}")
 
