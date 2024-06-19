@@ -10,12 +10,6 @@ from dotenv import load_dotenv
 import pyttsx3
 import sounddevice as sd
 
-# Check available devices
-print(sd.query_devices())
-
-# Set specific device ID if needed
-sd.default.device = 'my_device_id'
-
 # Load API keys from .env file
 load_dotenv()
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
@@ -47,6 +41,12 @@ async def recognize_audio_deepgram(audio_data):
 
 def record_audio(duration, samplerate):
     st.write("Recording🔉...")
+
+    # List available devices and select the default one
+    devices = sd.query_devices()
+    default_device = devices[sd.default.device[0]]['name']
+    st.write(f"Using default device: {default_device}")
+
     audio_data = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype=np.int16)
     sd.wait()  # Wait until recording is finished
     st.write("Recording finished🔴.")
