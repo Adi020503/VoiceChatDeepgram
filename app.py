@@ -41,10 +41,17 @@ async def recognize_audio_deepgram(audio_data):
 
 def record_audio(duration, samplerate):
     st.write("Recording🔉...")
-    audio_data = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype=np.int16)
-    sd.wait()  # Wait until recording is finished
-    st.write("Recording finished🔴.")
-    return audio_data
+    try:
+        audio_data = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype=np.int16)
+        sd.wait()  # Wait until recording is finished
+        st.write("Recording finished🔴.")
+        return audio_data
+    except sd.PortAudioError as e:
+        st.warning(f"PortAudioError: {e}")
+        st.warning("No input devices available. Simulating audio input.")
+        # Simulate audio data (silent audio)
+        audio_data = np.zeros(int(duration * samplerate), dtype=np.int16)
+        return audio_data
 
 def generate_response(prompt):
     response = groq_client.chat.completions.create(
