@@ -44,8 +44,16 @@ def record_audio(duration, samplerate):
 
     # List available devices and select the default one
     devices = sd.query_devices()
-    default_device = devices[sd.default.device[0]]['name']
+    
+    # Check if any input devices are available
+    input_devices = [i for i, dev in enumerate(devices) if dev['max_input_channels'] > 0]
+    if not input_devices:
+        raise ValueError("No input devices available.")
+    
+    default_device = devices[input_devices[0]]['name']
     st.write(f"Using default device: {default_device}")
+    
+    sd.default.device = input_devices[0]
 
     audio_data = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype=np.int16)
     sd.wait()  # Wait until recording is finished
