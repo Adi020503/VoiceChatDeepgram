@@ -1,7 +1,6 @@
 import io
 import os
 import asyncio
-import sounddevice as sd
 import numpy as np
 import wave
 import streamlit as st
@@ -9,6 +8,13 @@ from deepgram import Deepgram
 from groq import Groq
 from dotenv import load_dotenv
 import pyttsx3
+import sounddevice as sd
+
+# Check available devices
+print(sd.query_devices())
+
+# Set specific device ID if needed
+sd.default.device = 'my_device_id'
 
 # Load API keys from .env file
 load_dotenv()
