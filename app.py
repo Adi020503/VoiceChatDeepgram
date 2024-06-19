@@ -41,9 +41,15 @@ async def recognize_audio_deepgram(audio_data):
 
 def record_audio(duration, samplerate):
     st.write("Recording🔉...")
-    audio_data = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype=np.int16)
+    
+    # Find the default input device and use its index for recording
+    default_input_device = sd.default.device[0]
+    
+    audio_data = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype=np.int16, device=default_input_device)
+    
     sd.wait()  # Wait until recording is finished
     st.write("Recording finished🔴.")
+    
     return audio_data
 
 def generate_response(prompt):
