@@ -39,9 +39,9 @@ async def recognize_audio_deepgram(audio_data):
         response = await dg_client.transcription.prerecorded(source, {'punctuate': True, 'language': 'en-US'})
         return response['results']['channels'][0]['alternatives'][0]['transcript']
 
-def record_audio(duration, samplerate, device=None):
+def record_audio(duration, samplerate):
     st.write("Recording🔉...")
-    audio_data = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype=np.int16, device=device)
+    audio_data = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype=np.int16)
     sd.wait()  # Wait until recording is finished
     st.write("Recording finished🔴.")
     return audio_data
